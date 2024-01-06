@@ -7,19 +7,13 @@
 #include <thread>
 #include <vector>
 #include <chrono>
-#include <thread>
-#include <vector>
-#include <chrono>
-#include <atomic>
 #endif
 
-// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system && ./mandelbrot_interactive
-// multiple threads:
-// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive
+// g++ -o mandelbrot_interactive mandelbrot_interactive_old.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive
 
 const int WIDTH = 1280;
 const int HEIGHT = 800;
-const int MAX_ITERATIONS = 500;
+const int MAX_ITERATIONS = 50;
 
 sf::Color getColor(int iterations) {
     int r, g, b;
@@ -63,17 +57,6 @@ void computeMandelbrotSection(sf::Image& image, float zoom, std::complex<float> 
         }
     }
 }
-
-std::atomic<bool> redraw(false);
-std::atomic<bool> redrawRequested(false);
-
-void delayedRedraw(int delayInMilliseconds) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(delayInMilliseconds));
-    if (redrawRequested.load()) {
-        redraw.store(true);
-        redrawRequested.store(false);
-    }
-}
 #endif
 
 int main() {
@@ -85,8 +68,7 @@ int main() {
 
     float zoom = 1.0f;
     std::complex<float> move(0, 0);
-    std::thread redrawThread;
-    redraw.store(true);
+    bool redraw = true;
 
     while (window.isOpen()) {
         sf::Event event;
@@ -98,57 +80,49 @@ int main() {
             if (event.type == sf::Event::MouseWheelMoved) {
                 if (event.mouseWheel.delta > 0) zoom *= 1.1f;
                 else zoom /= 1.1f;
-                redrawRequested.store(true);
+                redraw = true;
             }
 
             // Handle pan
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
                 move -= std::complex<float>(0.1f / zoom, 0);
-                redrawRequested.store(true);
+                redraw = true;
             }
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
                 move += std::complex<float>(0.1f / zoom, 0);
-                redrawRequested.store(true);
+                redraw = true;
             }
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
                 move -= std::complex<float>(0, 0.1f / zoom);
-                redrawRequested.store(true);
+                redraw = true;
             }
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) {
                 move += std::complex<float>(0, 0.1f / zoom);
-                redrawRequested.store(true);
+                redraw = true;
             }
 
             // Graceful exit
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
                 window.close();
             }
-
-            // Check if a redraw is requested and if the thread is not already running
-            if (redrawRequested.load() && !redraw.load()) {
-                if (redrawThread.joinable()) {
-                    redrawThread.join(); // Ensure the previous thread is finished
-                }
-                redrawThread = std::thread(delayedRedraw, 1000); // Start a new thread for the delay
-            }
         }
 
-        if (redraw.load()) {
+        if (redraw) {
 #if USE_MUL_THREADS
-            const int threadCount = 15; // Number of threads to use
-            std::vector<std::thread> threads;
+        const int threadCount = 4; // Number of threads to use
+        std::vector<std::thread> threads;
 
-            // Divide the work among threads
-            for (int i = 0; i < threadCount; ++i) {
-                int startY = i * HEIGHT / threadCount;
-                int endY = (i + 1) * HEIGHT / threadCount;
-                threads.emplace_back(computeMandelbrotSection, std::ref(image), zoom, move, startY, endY);
-            }
+        // Divide the work among threads
+        for (int i = 0; i < threadCount; ++i) {
+            int startY = i * HEIGHT / threadCount;
+            int endY = (i + 1) * HEIGHT / threadCount;
+            threads.emplace_back(computeMandelbrotSection, std::ref(image), zoom, move, startY, endY);
+        }
 
-            // Join threads
-            for (auto& t : threads) {
-                t.join();
-            }
+        // Join threads
+        for (auto& t : threads) {
+            t.join();
+        }
 #else
             for (int x = 0; x < WIDTH; x++) {
                 for (int y = 0; y < HEIGHT; y++) {
@@ -161,16 +135,15 @@ int main() {
 #endif
             texture.loadFromImage(image);
             sprite.setTexture(texture);
-            redraw.store(false);
+            redraw = false;
         }
 
+        //sf::Texture texture;
+        //texture.loadFromImage(image);
+        //sf::Sprite sprite(texture);
         window.clear();
         window.draw(sprite);
         window.display();
-    }
-
-    if (redrawThread.joinable()) {
-        redrawThread.join(); // Make sure to join the thread before exiting
     }
 
     image.saveToFile("mandelbrot_interactive.png");
