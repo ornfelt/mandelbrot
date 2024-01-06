@@ -12,11 +12,14 @@
 #include <vector>
 #include <chrono>
 #include <atomic>
+#include <fstream>
 #endif
 
 // g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system && ./mandelbrot_interactive
 // multiple threads:
 // g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive
+// Using specific coordinates (see last_coordinates.txt)
+// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive 1 -0.3 0
 
 const int WIDTH = 1280;
 const int HEIGHT = 800;
@@ -75,9 +78,17 @@ void delayedRedraw(int delayInMilliseconds) {
         redrawRequested.store(false);
     }
 }
+
+void saveCoordinates(float zoom, std::complex<float> move, const std::string& filename) {
+    std::ofstream outFile(filename);
+    if (outFile) {
+        outFile << zoom << " " << move.real() << " " << move.imag() << std::endl;
+    }
+    outFile.close();
+}
 #endif
 
-int main() {
+int main(int argc, char* argv[]) {
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Mandelbrot Set");
     sf::Image image;
     image.create(WIDTH, HEIGHT, sf::Color(0, 0, 0));
@@ -88,6 +99,12 @@ int main() {
     std::complex<float> move(0, 0);
     std::thread redrawThread;
     redraw.store(true);
+
+    // Use zoom / pan from command-line argument
+    if (argc == 4) {
+        zoom = std::stof(argv[1]);
+        move = std::complex<float>(std::stof(argv[2]), std::stof(argv[3]));
+    }
 
     while (window.isOpen()) {
         sf::Event event;
@@ -178,6 +195,7 @@ int main() {
     }
 
     image.saveToFile("mandelbrot_interactive.png");
+    saveCoordinates(zoom, move, "last_coordinates.txt");
 
     return 0;
 }
