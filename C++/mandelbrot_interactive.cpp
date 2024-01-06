@@ -1,3 +1,4 @@
+#include <iostream>
 #include <SFML/Graphics.hpp>
 #include <complex>
 
@@ -135,7 +136,10 @@ int main() {
 
         if (redraw.load()) {
 #if USE_MUL_THREADS
-            const int threadCount = 15; // Number of threads to use
+
+            //const int threadCount = 15; // Number of threads to use
+            unsigned int threadCount = std::thread::hardware_concurrency();
+            std::cout << "Using " << threadCount << " threads" << std::endl;
             std::vector<std::thread> threads;
 
             // Divide the work among threads
