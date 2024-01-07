@@ -46,6 +46,7 @@ def main():
     zoom = 1.0
     move = complex(0, 0)
     redraw = True
+    first_run = True
 
     while True:
         for event in pygame.event.get():
@@ -93,6 +94,10 @@ def main():
             window.blit(surface, (0, 0))
             pygame.display.flip()
             redraw = False
+            # Not entirely sure why this is needed since redraw is set to True initially...
+            if first_run:
+                redraw = True
+                first_run = False
 
 if __name__ == "__main__":
     main()

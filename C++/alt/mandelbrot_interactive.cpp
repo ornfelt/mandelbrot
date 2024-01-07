@@ -9,11 +9,13 @@
 #include <chrono>
 #endif
 
-// g++ -o mandelbrot_interactive mandelbrot_interactive_old.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive
+// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system && ./mandelbrot_interactive
+// If USE_MUL_THREADS is set:
+// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive
 
 const int WIDTH = 1280;
 const int HEIGHT = 800;
-const int MAX_ITERATIONS = 50;
+const int MAX_ITERATIONS = 500;
 
 sf::Color getColor(int iterations) {
     int r, g, b;
@@ -109,7 +111,8 @@ int main() {
 
         if (redraw) {
 #if USE_MUL_THREADS
-        const int threadCount = 4; // Number of threads to use
+        //const int threadCount = 4; // Number of threads to use
+        unsigned int threadCount = std::thread::hardware_concurrency();
         std::vector<std::thread> threads;
 
         // Divide the work among threads

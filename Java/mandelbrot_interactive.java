@@ -4,55 +4,64 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MandelbrotInteractive extends JFrame {
     private static final int WIDTH = 1280;
     private static final int HEIGHT = 800;
-    private static final int MAX_ITERATIONS = 50;
+    private static final int MAX_ITERATIONS = 500;
+
     private float zoom = 1.0f;
     private Complex move = new Complex(0, 0);
     private BufferedImage image;
-    private boolean redraw = true;
-    private boolean redrawRequested = true; // Set to true to draw initially
+    private AtomicBoolean redraw = new AtomicBoolean(true);
+    private AtomicBoolean redrawRequested = new AtomicBoolean(false);
 
     public MandelbrotInteractive() {
         super("Mandelbrot Set");
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         pack();
+        setLocationRelativeTo(null);
         setVisible(true);
         image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
 
-        // Add mouse wheel listener for zoom
-        addMouseWheelListener(new MouseAdapter() {
+        addMouseListener(new MouseAdapter() {
             @Override
             public void mouseWheelMoved(MouseWheelEvent e) {
-                if (e.getPreciseWheelRotation() < 0) zoom *= 1.1f;
+                if (e.getWheelRotation() < 0) zoom *= 1.1f;
                 else zoom /= 1.1f;
-                redrawRequested = true;
+                redrawRequested.set(true);
             }
         });
 
-        // Add key listener for movement
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_LEFT:
                         move = move.subtract(new Complex(0.1f / zoom, 0));
-                        redrawRequested = true;
+                        redrawRequested.set(true);
                         break;
                     case KeyEvent.VK_RIGHT:
                         move = move.add(new Complex(0.1f / zoom, 0));
-                        redrawRequested = true;
+                        redrawRequested.set(true);
                         break;
                     case KeyEvent.VK_UP:
                         move = move.subtract(new Complex(0, 0.1f / zoom));
-                        redrawRequested = true;
+                        redrawRequested.set(true);
                         break;
                     case KeyEvent.VK_DOWN:
                         move = move.add(new Complex(0, 0.1f / zoom));
-                        redrawRequested = true;
+                        redrawRequested.set(true);
+                        break;
+                    case KeyEvent.VK_W:
+                        zoom *= 1.1f;
+                        redrawRequested.set(true);
+                        break;
+                    case KeyEvent.VK_S:
+                        zoom /= 1.1f;
+                        redrawRequested.set(true);
                         break;
                     case KeyEvent.VK_ESCAPE:
                         System.exit(0);
@@ -61,54 +70,67 @@ public class MandelbrotInteractive extends JFrame {
             }
         });
 
-        // Ensure the component is focusable for key listener
-        setFocusable(true);
-        requestFocusInWindow();
+        new Thread(() -> {
+            while (true) {
+                if (redrawRequested.getAndSet(false)) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    redraw.set(true);
+                }
 
-        // Initial draw
-        drawMandelbrot();
+                if (redraw.get()) {
+                    drawMandelbrot();
+                    repaint();
+                    redraw.set(false);
+                }
+            }
+        }).start();
     }
 
     private void drawMandelbrot() {
-        // Ensuring the drawing is done on the Event Dispatch Thread
-        SwingUtilities.invokeLater(() -> {
-            int threadCount = Runtime.getRuntime().availableProcessors();
-            List<Thread> threads = new ArrayList<>();
-
-            for (int i = 0; i < threadCount; i++) {
-                int startY = i * HEIGHT / threadCount;
-                int endY = (i + 1) * HEIGHT / threadCount;
-                Thread thread = new Thread(() -> computeMandelbrotSection(startY, endY));
-                threads.add(thread);
-                thread.start();
-            }
-
-            for (Thread thread : threads) {
-                try {
-                    thread.join();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+        int threadCount = Runtime.getRuntime().availableProcessors();
+        List<Thread> threads = new ArrayList<>();
+        
+        for (int i = 0; i < threadCount; i++) {
+            int startY = i * HEIGHT / threadCount;
+            int endY = (i + 1) * HEIGHT / threadCount;
+            Thread thread = new Thread(() -> {
+                for (int x = 0; x < WIDTH; x++) {
+                    for (int y = startY; y < endY; y++) {
+                        Complex c = convertToComplex(x, y, zoom, move);
+                        int value = mandelbrot(c);
+                        Color color = getColor(value);
+                        image.setRGB(x, y, color.getRGB());
+                    }
                 }
-            }
+            });
+            threads.add(thread);
+            thread.start();
+        }
 
-            repaint(); // Trigger repaint after drawing
-        });
-    }
-
-    private void computeMandelbrotSection(int startY, int endY) {
-        for (int x = 0; x < WIDTH; x++) {
-            for (int y = startY; y < endY; y++) {
-                Complex c = convertToComplex(x, y);
-                int value = mandelbrot(c);
-                Color color = getColor(value);
-                image.setRGB(x, y, color.getRGB());
+        for (Thread thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
     }
 
-    private Complex convertToComplex(int x, int y) {
-        double real = (x - WIDTH / 2.0) / (0.5 * zoom * WIDTH) + move.real;
-        double imag = (y - HEIGHT / 2.0) / (0.5 * zoom * HEIGHT) + move.imag;
+    private Color getColor(int iterations) {
+        double t = (double) iterations / MAX_ITERATIONS;
+        int r = (int) (9 * (1 - t) * t * t * t * 255);
+        int g = (int) (15 * (1 - t) * (1 - t) * t * t * 255);
+        int b = (int) (8.5 * (1 - t) * (1 - t) * (1 - t) * t * 255);
+        return new Color(r, g, b);
+    }
+
+    private Complex convertToComplex(int x, int y, float zoom, Complex move) {
+        float real = (x - WIDTH / 2.0f) / (0.5f * zoom * WIDTH) + move.real;
+        float imag = (y - HEIGHT / 2.0f) / (0.5f * zoom * HEIGHT) + move.imag;
         return new Complex(real, imag);
     }
 
@@ -124,51 +146,38 @@ public class MandelbrotInteractive extends JFrame {
         return iter;
     }
 
-    private Color getColor(int iterations) {
-        double t = (double) iterations / MAX_ITERATIONS;
-        int r = (int) (9 * (1 - t) * t * t * t * 255);
-        int g = (int) (15 * (1 - t) * (1 - t) * t * t * 255);
-        int b = (int) (8.5 * (1 - t) * (1 - t) * (1 - t) * t * 255);
-        return new Color(r, g, b);
-    }
-
     @Override
     public void paint(Graphics g) {
-        super.paint(g);
-        if (redrawRequested) {
-            drawMandelbrot();
-            redrawRequested = false;
-        }
         g.drawImage(image, 0, 0, this);
     }
 
-    private static class Complex {
-        final double real;
-        final double imag;
+    public static void main(String[] args) {
+        new MandelbrotInteractive();
+    }
 
-        Complex(double real, double imag) {
+    private static class Complex {
+        final float real;
+        final float imag;
+
+        public Complex(float real, float imag) {
             this.real = real;
             this.imag = imag;
         }
 
-        Complex add(Complex other) {
+        public Complex add(Complex other) {
             return new Complex(this.real + other.real, this.imag + other.imag);
         }
 
-        Complex subtract(Complex other) {
+        public Complex subtract(Complex other) {
             return new Complex(this.real - other.real, this.imag - other.imag);
         }
 
-        Complex square() {
+        public Complex square() {
             return new Complex(this.real * this.real - this.imag * this.imag, 2 * this.real * this.imag);
         }
 
-        double abs() {
-            return Math.sqrt(this.real * this.real + this.imag * this.imag);
+        public float abs() {
+            return (float) Math.sqrt(real * real + imag * imag);
         }
-    }
-
-    public static void main(String[] args) {
-        new MandelbrotInteractive().setVisible(true);
     }
 }

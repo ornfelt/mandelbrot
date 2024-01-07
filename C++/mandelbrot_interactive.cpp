@@ -2,9 +2,6 @@
 #include <SFML/Graphics.hpp>
 #include <complex>
 
-#define USE_MUL_THREADS 1
-
-#if USE_MUL_THREADS
 #include <thread>
 #include <vector>
 #include <chrono>
@@ -13,17 +10,15 @@
 #include <chrono>
 #include <atomic>
 #include <fstream>
-#endif
 
-// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system && ./mandelbrot_interactive
-// multiple threads:
 // g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive
-// Using specific coordinates (see last_coordinates.txt)
+// Using starting coordinates for pan and zoom (see last_coordinates.txt)
 // g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive 1 -0.3 0
+// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive 26854.6 -1.24993 -0.0125627
 
 const int WIDTH = 1280;
 const int HEIGHT = 800;
-const int MAX_ITERATIONS = 500;
+const int MAX_ITERATIONS = 1000;
 
 sf::Color getColor(int iterations) {
     int r, g, b;
@@ -56,7 +51,6 @@ int mandelbrot(std::complex<float> c) {
     return iter;
 }
 
-#if USE_MUL_THREADS
 void computeMandelbrotSection(sf::Image& image, float zoom, std::complex<float> move, int startY, int endY) {
     for (int x = 0; x < WIDTH; x++) {
         for (int y = startY; y < endY; y++) {
@@ -86,7 +80,6 @@ void saveCoordinates(float zoom, std::complex<float> move, const std::string& fi
     }
     outFile.close();
 }
-#endif
 
 int main(int argc, char* argv[]) {
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Mandelbrot Set");
@@ -152,7 +145,6 @@ int main(int argc, char* argv[]) {
         }
 
         if (redraw.load()) {
-#if USE_MUL_THREADS
 
             //const int threadCount = 15; // Number of threads to use
             unsigned int threadCount = std::thread::hardware_concurrency();
@@ -170,16 +162,6 @@ int main(int argc, char* argv[]) {
             for (auto& t : threads) {
                 t.join();
             }
-#else
-            for (int x = 0; x < WIDTH; x++) {
-                for (int y = 0; y < HEIGHT; y++) {
-                    std::complex<float> c = convertToComplex(x, y, zoom, move);
-                    int value = mandelbrot(c);
-                    sf::Color color = getColor(value);
-                    image.setPixel(x, y, color);
-                }
-            }
-#endif
             texture.loadFromImage(image);
             sprite.setTexture(texture);
             redraw.store(false);
