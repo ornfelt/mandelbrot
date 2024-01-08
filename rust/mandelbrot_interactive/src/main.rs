@@ -5,7 +5,7 @@ use std::thread;
 
 const WIDTH: usize = 800;
 const HEIGHT: usize = 700;
-const MAX_ITERATIONS: i32 = 10;
+const MAX_ITERATIONS: i32 = 200;
 
 fn get_color(iterations: i32) -> u32 {
     let t = iterations as f64 / MAX_ITERATIONS as f64;
@@ -51,7 +51,8 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let buffer_clone = Arc::new(Mutex::new(buffer.clone()));
-        let threads = 4; // Or any other number of threads you want to use
+        //let threads = 4;
+        let threads = num_cpus::get() as usize;
         let mut handles = vec![];
 
         for i in 0..threads {
@@ -98,6 +99,9 @@ fn main() {
         }
         if window.is_key_down(Key::Down) {
             move_y += 0.1 / zoom;
+        }
+        if window.is_key_down(Key::Escape) {
+            break;
         }
     }
 }

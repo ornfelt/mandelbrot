@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 minifb = "0.19"
 num-complex = "0.4"
+num_cpus = "1.13"
