@@ -8,30 +8,26 @@ namespace mandelbrot
 {
     public class MandelbrotForm : Form
     {
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
-        //[STAThread]
-        //static void Main()
-        //{
-        //    // To customize application configuration such as set high DPI settings or default font,
-        //    // see https://aka.ms/applicationconfiguration.
-        //    ApplicationConfiguration.Initialize();
-        //    Application.Run(new Form1());
-        //}
+        private const int WIDTH = 1280;
+        private const int HEIGHT = 800;
+        private const int MAX_ITERATIONS = 1000;
+        //private const int MAX_ITERATIONS = 10_000;
 
+        private double zoom = 1.0f;
+        private Complex move = new Complex(0, 0);
+        // Using preset zoom / move (see last_coordinates.txt)
+        //private double zoom = 368.4231567;
+        //private Complex move = new Complex(-0.7577724344446324, -0.06907189212506637);
+        // Very zoomed in (try high MaxIterations like 5000 or even 10000)
+        //private double zoom = 754679.3818201923;
+        //private Complex move = new Complex(-0.7572662262770462, -0.06744332997301555);
+
+        private Bitmap image;
         private Thread redrawThread;
         private readonly object lockObject = new object();
         private bool updateRequested = false;
         private DateTime lastUpdate;
         private readonly TimeSpan redrawDelay = TimeSpan.FromMilliseconds(500);
-
-        private const int WIDTH = 1280;
-        private const int HEIGHT = 800;
-        private const int MAX_ITERATIONS = 500;
-        private Bitmap image;
-        private float zoom = 1.0f;
-        private Complex move = new Complex(0, 0);
         private bool redraw = true;
 
         public MandelbrotForm()
@@ -45,6 +41,13 @@ namespace mandelbrot
 
             redrawThread = new Thread(RedrawThreadFunction);
             redrawThread.Start();
+
+            // Stop white flickering
+            this.SetStyle(
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.UserPaint |
+                ControlStyles.DoubleBuffer,
+                true);
         }
 
         private void RedrawThreadFunction()
@@ -128,9 +131,9 @@ namespace mandelbrot
                         move = new Complex(move.Real, move.Imaginary + 0.1f / zoom);
                         break;
                     case Keys.Escape:
-                        this.Close();
                         SaveCoordinates(zoom, move, "last_coordinates.txt");
-                        // Brute force exit (the above doesn't work)
+                        this.Close();
+                        // Brute force exit (the above doesn't fully exit)
                         System.Environment.Exit(1);
                         break;
                 }
@@ -158,7 +161,7 @@ namespace mandelbrot
 
         private void DrawMandelbrot()
         {
-            // Parallelize the drawing for improved performance
+            // Parallelize drawing for improved performance
             // To specify threads to use:
             //var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 4 };
             //Parallel.For(0, Height, parallelOptions, y =>
@@ -211,7 +214,7 @@ namespace mandelbrot
         {
             if (redrawThread != null && redrawThread.IsAlive)
             {
-                redrawThread.Abort(); // Forcefully terminate the thread
+                //redrawThread.Abort(); // Forcefully terminate the thread
             }
             base.OnFormClosing(e);
         }
@@ -223,5 +226,17 @@ namespace mandelbrot
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MandelbrotForm());
         }
+
+        /// <summary>
+        ///  The main entry point for the application.
+        /// </summary>
+        //[STAThread]
+        //static void Main()
+        //{
+        //    // To customize application configuration such as set high DPI settings or default font,
+        //    // see https://aka.ms/applicationconfiguration.
+        //    ApplicationConfiguration.Initialize();
+        //    Application.Run(new Form1());
+        //}
     }
 }

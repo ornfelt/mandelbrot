@@ -15,17 +15,17 @@ public partial class MainWindow : Window
     private const int Height = 800;
     private const int MaxIterations = 1000;
     //private const int MaxIterations = 10_000;
-    private WriteableBitmap bitmap;
-    //private double zoom = 1.0;
-    //private Complex move = new Complex(0, 0);
 
+    private double zoom = 1.0;
+    private Complex move = new Complex(0, 0);
     // Using preset zoom / move (see last_coordinates.txt)
     //private double zoom = 80.1795320536;
     //private Complex move = new Complex(-0.7485344173901758, -0.07992110580354322);
     // Very zoomed in (try high MaxIterations like 5000 or even 10000)
-    private double zoom = 15226516201.109608;
-    private Complex move = new Complex(-0.7485344174295809, -0.0799125897413243);
+    //private double zoom = 15226516201.109608;
+    //private Complex move = new Complex(-0.7485344174295809, -0.0799125897413243);
 
+    private WriteableBitmap bitmap;
     private readonly Thread redrawThread;
     private readonly object lockObject = new object();
     private bool updateRequested = true;
@@ -70,7 +70,7 @@ public partial class MainWindow : Window
 
             Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                    DrawMandelbrot();
+                        DrawMandelbrot();
                     });
         }
     }
@@ -88,7 +88,7 @@ public partial class MainWindow : Window
     private void DrawMandelbrot()
     {
         var buffer = new uint[Width * Height];
-        // Use multiple threads to calculate
+        // Parallelize drawing for improved performance
         // To specify threads to use:
         //var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 4 };
         //Parallel.For(0, Height, parallelOptions, y =>
@@ -151,13 +151,13 @@ public partial class MainWindow : Window
 
     private void Window_PointerWheelChanged(object sender, Avalonia.Input.PointerWheelEventArgs e)
     {
-        HandleEvent(() => 
-                {
-                    if (e.Delta.Y > 0)
-                    zoom *= 1.1;
-                    else if (e.Delta.Y < 0)
-                    zoom /= 1.1;
-                });
+        HandleEvent(() =>
+        {
+            if (e.Delta.Y > 0)
+                zoom *= 1.1;
+            else if (e.Delta.Y < 0)
+                zoom /= 1.1;
+        });
     }
 
     private void SaveCoordinates(double zoom, Complex move, string filename)
@@ -178,42 +178,42 @@ public partial class MainWindow : Window
 
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     {
-        if (e.Key == Avalonia.Input.Key.Escape) 
+        if (e.Key == Avalonia.Input.Key.Escape)
         {
             //this.Close();
             Dispatcher.UIThread.InvokeAsync(() => this.Close());
             SaveCoordinates(zoom, move, "last_coordinates.txt");
-            // Brute force exit (the above doesn't work)
+            // Brute force exit (the above doesn't fully exit)
             System.Environment.Exit(1);
         }
-        HandleEvent(() => 
+        HandleEvent(() =>
                 {
                     base.OnKeyDown(e);
                     double panFactor = 0.1 / zoom;
 
                     switch (e.Key)
                     {
-                    case Avalonia.Input.Key.Left:
-                        move = new Complex(move.Real - panFactor, move.Imaginary);
-                        break;
-                    case Avalonia.Input.Key.Right:
-                        move = new Complex(move.Real + panFactor, move.Imaginary);
-                        break;
-                    case Avalonia.Input.Key.Up:
-                        move = new Complex(move.Real, move.Imaginary - panFactor);
-                        break;
-                    case Avalonia.Input.Key.Down:
-                        move = new Complex(move.Real, move.Imaginary + panFactor);
-                        break;
-                    case Avalonia.Input.Key.W:
-                        zoom *= 1.1;
-                        break;
-                    case Avalonia.Input.Key.S:
-                        zoom /= 1.1;
-                        break;
-                    case Avalonia.Input.Key.Escape:
-                        this.Close();
-                        break;
+                        case Avalonia.Input.Key.Left:
+                            move = new Complex(move.Real - panFactor, move.Imaginary);
+                            break;
+                        case Avalonia.Input.Key.Right:
+                            move = new Complex(move.Real + panFactor, move.Imaginary);
+                            break;
+                        case Avalonia.Input.Key.Up:
+                            move = new Complex(move.Real, move.Imaginary - panFactor);
+                            break;
+                        case Avalonia.Input.Key.Down:
+                            move = new Complex(move.Real, move.Imaginary + panFactor);
+                            break;
+                        case Avalonia.Input.Key.W:
+                            zoom *= 1.1;
+                            break;
+                        case Avalonia.Input.Key.S:
+                            zoom /= 1.1;
+                            break;
+                        case Avalonia.Input.Key.Escape:
+                            this.Close();
+                            break;
                     }
                 });
     }
