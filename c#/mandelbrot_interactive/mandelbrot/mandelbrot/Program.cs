@@ -163,8 +163,8 @@ namespace mandelbrot
         {
             // Parallelize drawing for improved performance
             // To specify threads to use:
-            //var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 4 };
-            //Parallel.For(0, Height, parallelOptions, y =>
+            //var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 1 };
+            //Parallel.For(0, HEIGHT, parallelOptions, y =>
             Parallel.For(0, HEIGHT, y =>
             {
                 for (int x = 0; x < WIDTH; x++)
