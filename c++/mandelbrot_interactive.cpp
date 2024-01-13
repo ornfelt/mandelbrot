@@ -11,10 +11,10 @@
 #include <atomic>
 #include <fstream>
 
-// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive
+// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -lpthread && ./mandelbrot_interactive
 // Using starting coordinates for pan and zoom (see last_coordinates.txt)
-// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive 1 -0.3 0
-// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -pthread && ./mandelbrot_interactive 26854.6 -1.24993 -0.0125627
+// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -lpthread && ./mandelbrot_interactive 1 -0.3 0
+// g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -lpthread && ./mandelbrot_interactive 26854.6 -1.24993 -0.0125627
 
 const int WIDTH = 1280;
 const int HEIGHT = 800;
