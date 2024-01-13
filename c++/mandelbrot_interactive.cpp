@@ -146,7 +146,7 @@ int main(int argc, char* argv[]) {
 
         if (redraw.load()) {
 
-            //const int threadCount = 15; // Number of threads to use
+            //const int threadCount = 1; // Number of threads to use
             unsigned int threadCount = std::thread::hardware_concurrency();
             std::cout << "Using " << threadCount << " threads" << std::endl;
             std::vector<std::thread> threads;
