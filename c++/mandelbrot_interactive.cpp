@@ -11,6 +11,12 @@
 #include <atomic>
 #include <fstream>
 
+#define USE_FUTURE 1
+
+# if USE_FUTURE
+#include <future>
+#endif
+
 // g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -lpthread && ./mandelbrot_interactive
 // Using starting coordinates for pan and zoom (see last_coordinates.txt)
 // g++ -o mandelbrot_interactive mandelbrot_interactive.cpp -lsfml-graphics -lsfml-window -lsfml-system -lpthread && ./mandelbrot_interactive 1 -0.3 0
@@ -145,10 +151,22 @@ int main(int argc, char* argv[]) {
         }
 
         if (redraw.load()) {
-
             //const int threadCount = 1; // Number of threads to use
             unsigned int threadCount = std::thread::hardware_concurrency();
             std::cout << "Using " << threadCount << " threads" << std::endl;
+#if USE_FUTURE
+            std::vector<std::future<void>> futures;
+
+            for (unsigned int i = 0; i < threadCount; ++i) {
+                int startY = i * HEIGHT / threadCount;
+                int endY = (i + 1) * HEIGHT / threadCount;
+                futures.emplace_back(std::async(std::launch::async, computeMandelbrotSection, std::ref(image), zoom, move, startY, endY));
+            }
+
+            for (auto& f : futures) {
+                f.get(); // Wait for all threads to complete
+            }
+#else
             std::vector<std::thread> threads;
 
             // Divide the work among threads
@@ -162,6 +180,8 @@ int main(int argc, char* argv[]) {
             for (auto& t : threads) {
                 t.join();
             }
+#endif
+
             texture.loadFromImage(image);
             sprite.setTexture(texture);
             redraw.store(false);
